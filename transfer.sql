@@ -1,8 +1,4 @@
 
-/*
-OLD - Superseded by transfer.sql
-*/
-
 
 /*
  * Walk in refill transfer script
