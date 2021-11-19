@@ -117,10 +117,18 @@ insert_treatment AS (
 --)
 
 
+-- Status update query:
 -- Having transferred the events above, we now need to set TRANSFER MODE to AUTOMATICALLY AND complete the events
+-- In the case where we have transferred an event with no lab results (eventdatavalues#>>'{"WTz4HSqoE5E","value"}' IS NULL)
+-- we set status = ACTIVE and TRANSFER MODE to AUTOMATICALLY for later transfer of lab results.
+-- !! Note: Do not run this query without having run queries above; it updates regardless of wheter events are transferred or not, I believe.
 -- TODO: Make sure to only complete events where lab results have been transferred!!
-
-update programstageinstance psiupdate set status = 'COMPLETED',
+update programstageinstance psiupdate
+    set status = CASE
+        -- when eventprogram.WTz4HSqoE5E (Follow up lab Results) ?exists? : SET status = 'COMPLETED'; ELSE 'ACTIVE'
+        WHEN psifrom.eventdatavalues#>>'{"WTz4HSqoE5E","value"}' IS NULL OR
+            psifrom.eventdatavalues#>>'{"WTz4HSqoE5E","value"}' = ''
+            THEN 'ACTIVE' ELSE 'COMPLETED' END,
     --set TRANSFER MODE to AUTOMATICALLY 
     eventdatavalues = jsonb_set(psiupdate.eventdatavalues, '{iup9aING8xC,value}', '"AUTOMATICALLY"')
     FROM programstageinstance psifrom
@@ -133,11 +141,11 @@ update programstageinstance psiupdate set status = 'COMPLETED',
     and teav.value = psi.eventdatavalues#>>'{"eCy7sKTrwnA","value"}'
     */
     -- Match trackedentityattribute ZkNZOxS24k7 with eventdatavalues XupJDPkqWoL - Unit TB No
-    join trackedentityattributevalue teav2 -- ???
+    join trackedentityattributevalue teav2
     on teav2.trackedentityattributeid = tea2.trackedentityattributeid
     and teav2.value = psifrom.eventdatavalues#>>'{"XupJDPkqWoL","value"}'
     -- Match trackedentityattribute jWjSY7cktaQ with eventdatavalues bvuRnNr6INS - Full name
-    join trackedentityattributevalue teav3 -- ???
+    join trackedentityattributevalue teav3
     on teav3.trackedentityattributeid = tea3.trackedentityattributeid
     and teav3.value = psifrom.eventdatavalues#>>'{"bvuRnNr6INS","value"}'
 
@@ -149,6 +157,60 @@ update programstageinstance psiupdate set status = 'COMPLETED',
     and psifrom.eventdatavalues#>>'{"iup9aING8xC","value"}' = 'NOTTRANSFERRED'
     and psiupdate.programstageinstanceid = psifrom.programstageinstanceid;
 
+
+-- Lab result transfer:
+-- We should now have transferread all eligible events and flagged them as 'AUTOMATICALLY' transferred.
+-- For those events 'AUTOMATICALLY' transferred yet still have status = 'ACTIVE' we want to transfer lab results
+-- and mark event with status = 'COMPLETE'
+-- TODO: This creates a new programStageInstance/event, instead it should update the existing programStageInstance/event
+-- from earlier transfer! Need to identify previous event and update that.
+WITH transfer AS (
+    UPDATE programstageinstance psiupdate
+    SET status = 'ACTIVE'
+    FROM programstageinstance psifrom
+    JOIN trackedentityattribute tea2 on tea2.uid = 'ZkNZOxS24k7' -- Unit TB No
+    JOIN trackedentityattribute tea3 on tea3.uid = 'jWjSY7cktaQ' -- Full name
+
+    -- Match trackedentityattribute ZkNZOxS24k7 with eventdatavalues XupJDPkqWoL - Unit TB No
+    join trackedentityattributevalue teav2
+    on teav2.trackedentityattributeid = tea2.trackedentityattributeid
+    and teav2.value = psifrom.eventdatavalues#>>'{"XupJDPkqWoL","value"}'
+
+    -- Match trackedentityattribute jWjSY7cktaQ with eventdatavalues bvuRnNr6INS - Full name
+    join trackedentityattributevalue teav3
+    on teav3.trackedentityattributeid = tea3.trackedentityattributeid
+    and teav3.value = psifrom.eventdatavalues#>>'{"bvuRnNr6INS","value"}'
+
+    JOIN trackedentityinstance tei on tei.trackedentityinstanceid = teav2.trackedentityinstanceid
+    JOIN programinstance pi on pi.trackedentityinstanceid = tei.trackedentityinstanceid and pi.deleted = false and pi.status = 'ACTIVE' -- ?? Do we really want to check whether pi.status = 'ACTIVE'?
+
+    WHERE psifrom.programstageid = (SELECT programstageid from programstage WHERE uid = 'qZ43tA7bpir')
+    AND (psifrom.eventdatavalues#>>'{"MVQOgAxvNWh","value"}' IN ('EVENT_TRANSFER', 'PERMANENT_TRANSFER'))
+    AND psifrom.eventdatavalues#>>'{"iup9aING8xC","value"}' = 'AUTOMATICALLY'
+    AND psifrom.status = 'ACTIVE'
+    AND psifrom.eventdatavalues#>>'{"WTz4HSqoE5E","value"}' IS NOT NULL
+    AND psiupdate.programstageinstanceid = psifrom.programstageinstanceid
+
+    RETURNING 
+    nextval('programstageinstance_sequence') as destpsiid, 
+    (select programstageid from programstage where uid = 'edyRc6d5Bts') as destpsid, 
+    psifrom.*, 
+    pi.programinstanceid as destinationpi
+)
+UPDATE programstageinstance psitracker
+    SET eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{WTz4HSqoE5E,value}', transfer.eventdatavalues#>>'{"WTz4HSqoE5E","value"}'),
+    eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{KNRRxYxjtOz,value}', transfer.eventdatavalues#>>'{"KNRRxYxjtOz","value"}'),
+    eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{t1wRW4bpRrj,value}', transfer.eventdatavalues#>>'{"t1wRW4bpRrj","value"}'),
+    eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{U4jSUZPF0HH,value}', transfer.eventdatavalues#>>'{"U4jSUZPF0HH","value"}')
+FROM transfer WHERE destinationpi IS NOT NULL;
+
+/*
+INSERT INTO programstageinstance
+    (programstageinstanceid,uid  ,programinstanceid,programstageid,executiondate,organisationunitid,status     ,created,lastupdated,attributeoptioncomboid,deleted,storedby,createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo )
+    SELECT
+    destpsiid             ,uid(),destinationpi    ,destpsid      ,executiondate,organisationunitid,'COMPLETED',now()  ,now()      ,attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
+    from transfer where destinationpi is not null;
+*/
 
 -- Update TEI ownership on PERMANENT_TRANSFER:
 -- Once done with transfer above, select events from event program that are set to permanent transfer, MVQOgAxvNWh='PERMANENT_TRANSFER',
