@@ -192,19 +192,22 @@ WITH transfer AS (
     AND psiupdate.programstageinstanceid = psifrom.programstageinstanceid
 
     RETURNING 
-    nextval('programstageinstance_sequence') as destpsiid, 
+    --nextval('programstageinstance_sequence') as destpsiid, 
     (select programstageid from programstage where uid = 'edyRc6d5Bts') as destpsid, 
     psifrom.*, 
     pi.programinstanceid as destinationpi
 )
-
 UPDATE programstageinstance psitracker
     SET eventdatavalues = psitracker.eventdatavalues
     || transfer.eventdatavalues -> 'WTz4HSqoE5E'
     || transfer.eventdatavalues -> 'KNRRxYxjtOz'
     || transfer.eventdatavalues -> 't1wRW4bpRrj'
     || transfer.eventdatavalues -> 'U4jSUZPF0HH'
-FROM transfer WHERE destinationpi IS NOT NULL;
+FROM transfer WHERE destinationpi IS NOT NULL -- Why destinationpi?
+    AND psitracker.programstageid = transfer.destpsid
+    AND psitracker.eventdatavalues#>>'{"XupJDPkqWoL","value"}' = transfer.eventdatavalues#>>'{"XupJDPkqWoL","value"}' -- Unit TB no
+    AND psitracker.eventdatavalues#>>'{"bvuRnNr6INS","value"}' = transfer.eventdatavalues#>>'{"bvuRnNr6INS","value"}' -- Full name
+    ;
 
 
 
