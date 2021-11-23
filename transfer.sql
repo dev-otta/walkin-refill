@@ -197,12 +197,25 @@ WITH transfer AS (
     psifrom.*, 
     pi.programinstanceid as destinationpi
 )
+
 UPDATE programstageinstance psitracker
-    SET eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{WTz4HSqoE5E,value}', transfer.eventdatavalues#>>'{"WTz4HSqoE5E","value"}'),
-    eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{KNRRxYxjtOz,value}', transfer.eventdatavalues#>>'{"KNRRxYxjtOz","value"}'),
-    eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{t1wRW4bpRrj,value}', transfer.eventdatavalues#>>'{"t1wRW4bpRrj","value"}'),
-    eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{U4jSUZPF0HH,value}', transfer.eventdatavalues#>>'{"U4jSUZPF0HH","value"}')
+    SET eventdatavalues = psitracker.eventdatavalues
+    || transfer.eventdatavalues -> 'WTz4HSqoE5E'
+    || transfer.eventdatavalues -> 'KNRRxYxjtOz'
+    || transfer.eventdatavalues -> 't1wRW4bpRrj'
+    || transfer.eventdatavalues -> 'U4jSUZPF0HH'
 FROM transfer WHERE destinationpi IS NOT NULL;
+
+
+
+/*
+UPDATE programstageinstance psitracker
+    SET eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{WTz4HSqoE5E}', transfer.eventdatavalues -> 'WTz4HSqoE5E'),
+    eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{KNRRxYxjtOz}', transfer.eventdatavalues -> 'KNRRxYxjtOz'),
+    eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{t1wRW4bpRrj}', transfer.eventdatavalues -> 't1wRW4bpRrj'),
+    eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{U4jSUZPF0HH}', transfer.eventdatavalues -> 'U4jSUZPF0HH')
+FROM transfer WHERE destinationpi IS NOT NULL;
+*/
 
 /*
 INSERT INTO programstageinstance
