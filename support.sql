@@ -2,6 +2,16 @@
  * Various support queries
  */
 
+
+(select programstageid from programstage where uid = 'edyRc6d5Bts') -- 26539 Laboratory, 1:TB Surveillance Program
+(SELECT programstageid from programstage WHERE uid = 'qZ43tA7bpir') -- 31341 6: TB-Refill Event programme
+/*
+        transfer.eventdatavalues -> 'WTz4HSqoE5E' -- DSLT-12 : Follow up lab Results
+        transfer.eventdatavalues -> 'KNRRxYxjtOz' -- DSLT-11 : Results others(specify)
+        transfer.eventdatavalues -> 't1wRW4bpRrj' -- DSLT-01 : Type of Test
+        transfer.eventdatavalues -> 'U4jSUZPF0HH' -- DS: Month of Treatment
+*/
+
 -- SELECT variant of STATUS UPDATE query:
 SELECT * FROM programstageinstance psiupdate
 	--set status = 'COMPLETED',
@@ -70,6 +80,16 @@ WITH transfer AS (
 )
 SELECT * FROM transfer;
 
+
+With transfer AS (
+    SELECT programstageinstanceid, uid, programinstanceid, programstageid, storedby, organisationunitid, status, eventdatavalues,
+        eventdatavalues
+    FROM programstageinstance psi
+    WHERE psi.programstageid =
+    (SELECT programstageid from programstage WHERE uid = 'qZ43tA7bpir')
+    AND programstageinstanceid = 87
+)
+SELECT * FROM transfer;
 
 
 SELECT * FROM programstage WHERE programstageid IN (26539,26653);

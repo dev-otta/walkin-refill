@@ -1,5 +1,4 @@
 
-
 /*
  * Walk in refill transfer script
  * 
@@ -195,38 +194,22 @@ WITH transfer AS (
     --nextval('programstageinstance_sequence') as destpsiid, 
     (select programstageid from programstage where uid = 'edyRc6d5Bts') as destpsid, 
     psifrom.*, 
-    pi.programinstanceid as destinationpi
+    pi.programinstanceid as destinationpi,
+    psifrom.eventdatavalues#>>'{"bvuRnNr6INS","value"}' as full_name,
+    psifrom.eventdatavalues#>>'{"XupJDPkqWoL","value"}' as unit_tb_no
 )
 UPDATE programstageinstance psitracker
-    SET eventdatavalues = psitracker.eventdatavalues
-    || transfer.eventdatavalues -> 'WTz4HSqoE5E'
-    || transfer.eventdatavalues -> 'KNRRxYxjtOz'
-    || transfer.eventdatavalues -> 't1wRW4bpRrj'
-    || transfer.eventdatavalues -> 'U4jSUZPF0HH'
-FROM transfer WHERE destinationpi IS NOT NULL -- Why destinationpi?
+    SET eventdatavalues = psitracker.eventdatavalues || transfer.eventdatavalues
+FROM transfer
+WHERE destinationpi IS NOT NULL
     AND psitracker.programstageid = transfer.destpsid
+    AND psitracker.programinstanceid = destinationpi
+    /* Target programstageinstance does not have Full name and TB Unit No (XupJDPkqWoL, bvuRnNr6INS) - Could perhaps join trackedentityinstance via programinstance?
     AND psitracker.eventdatavalues#>>'{"XupJDPkqWoL","value"}' = transfer.eventdatavalues#>>'{"XupJDPkqWoL","value"}' -- Unit TB no
     AND psitracker.eventdatavalues#>>'{"bvuRnNr6INS","value"}' = transfer.eventdatavalues#>>'{"bvuRnNr6INS","value"}' -- Full name
-    ;
+    */
+;
 
-
-
-/*
-UPDATE programstageinstance psitracker
-    SET eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{WTz4HSqoE5E}', transfer.eventdatavalues -> 'WTz4HSqoE5E'),
-    eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{KNRRxYxjtOz}', transfer.eventdatavalues -> 'KNRRxYxjtOz'),
-    eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{t1wRW4bpRrj}', transfer.eventdatavalues -> 't1wRW4bpRrj'),
-    eventdatavalues = jsonb_set(psitracker.eventdatavalues, '{U4jSUZPF0HH}', transfer.eventdatavalues -> 'U4jSUZPF0HH')
-FROM transfer WHERE destinationpi IS NOT NULL;
-*/
-
-/*
-INSERT INTO programstageinstance
-    (programstageinstanceid,uid  ,programinstanceid,programstageid,executiondate,organisationunitid,status     ,created,lastupdated,attributeoptioncomboid,deleted,storedby,createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo )
-    SELECT
-    destpsiid             ,uid(),destinationpi    ,destpsid      ,executiondate,organisationunitid,'COMPLETED',now()  ,now()      ,attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
-    from transfer where destinationpi is not null;
-*/
 
 -- Update TEI ownership on PERMANENT_TRANSFER:
 -- Once done with transfer above, select events from event program that are set to permanent transfer, MVQOgAxvNWh='PERMANENT_TRANSFER',
@@ -252,9 +235,3 @@ UPDATE trackedentityprogramowner tpo
   AND tpo.trackedentityinstanceid = tei.trackedentityinstanceid;
 
 COMMIT;
-
-
-
-
-
-
