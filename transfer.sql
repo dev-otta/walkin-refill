@@ -195,8 +195,8 @@ WITH transfer AS (
     (select programstageid from programstage where uid = 'edyRc6d5Bts') as destpsid, 
     psifrom.*, 
     pi.programinstanceid as destinationpi,
-    psifrom.eventdatavalues#>>'{"bvuRnNr6INS","value"}' as full_name,
-    psifrom.eventdatavalues#>>'{"XupJDPkqWoL","value"}' as unit_tb_no
+    --psifrom.eventdatavalues#>>'{"bvuRnNr6INS","value"}' as full_name,
+    --psifrom.eventdatavalues#>>'{"XupJDPkqWoL","value"}' as unit_tb_no
 )
 UPDATE programstageinstance psitracker
     SET eventdatavalues = psitracker.eventdatavalues || transfer.eventdatavalues
