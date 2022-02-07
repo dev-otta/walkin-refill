@@ -33,8 +33,8 @@ WITH transfer_treatment as(
     
     FROM programstageinstance psi
     -- join trackedentityattribute tea on tea.uid = 'fPlDBVvpEJR' - District TB No, not in use
-    JOIN trackedentityattribute tea2 on tea2.uid = 'ZkNZOxS24k7'
-    JOIN trackedentityattribute tea3 on tea3.uid = 'jWjSY7cktaQ'
+    JOIN trackedentityattribute tea2 on tea2.uid = 'ZkNZOxS24k7' -- Unit TB No
+    JOIN trackedentityattribute tea3 on tea3.uid = 'jWjSY7cktaQ' -- Full name
     -- Match trackedentityattribute fPlDBVvpEJR with eventdatavalues eCy7sKTrwnA - District TB No, not in use
     /*
     join trackedentityattributevalue teav
@@ -105,7 +105,7 @@ transfer_lab AS (
 
 insert_treatment AS (
   insert into programstageinstance (programstageinstanceid,uid,programinstanceid,programstageid,executiondate,organisationunitid,status,created,lastupdated,attributeoptioncomboid,deleted,storedby,createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo )
-    (select                           destpsiid             ,uid(),destinationpi,  destpsid,      executiondate,organisationunitid,'COMPLETED',now(),  now(), attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
+    (select                           destpsiid,uid(),destinationpi,  destpsid,      executiondate,organisationunitid,'COMPLETED',now(),  now(), attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
     from transfer_treatment where destinationpi is not null)
 )--,
 
@@ -121,10 +121,9 @@ insert_treatment AS (
 -- In the case where we have transferred an event with no lab results (eventdatavalues#>>'{"WTz4HSqoE5E","value"}' IS NULL)
 -- we set status = ACTIVE and TRANSFER MODE to AUTOMATICALLY for later transfer of lab results.
 -- !! Note: Do not run this query without having run queries above; it updates regardless of wheter events are transferred or not, I believe.
--- TODO: Make sure to only complete events where lab results have been transferred!!
 update programstageinstance psiupdate
     set status = CASE
-        -- when eventprogram.WTz4HSqoE5E (Follow up lab Results) ?exists? : SET status = 'COMPLETED'; ELSE 'ACTIVE'
+        -- when eventprogram.WTz4HSqoE5E (Follow up lab Results) exists : SET status = 'COMPLETED'; ELSE 'ACTIVE'
         WHEN psifrom.eventdatavalues#>>'{"WTz4HSqoE5E","value"}' IS NULL OR
             psifrom.eventdatavalues#>>'{"WTz4HSqoE5E","value"}' = ''
             THEN 'ACTIVE' ELSE 'COMPLETED' END,
