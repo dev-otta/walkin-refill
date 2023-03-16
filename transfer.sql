@@ -285,7 +285,7 @@ UPDATE programstageinstance psiupdate
   AND teav3 IS null -- Full Name
   AND psi.eventdatavalues#>>'{"MVQOgAxvNWh","value"}' IN ('EVENT_TRANSFER', 'PERMANENT_TRANSFER')
   AND psi.eventdatavalues#>>'{"iup9aING8xC","value"}' = 'NOTTRANSFERRED';
-
+  
 
 /*
  * 2) Set Transfer status = 'No Match' for events with no matching Unit TB No AND no matching Full name
