@@ -21,6 +21,99 @@
  *
  */
 
+/*
+ * Section ZERO
+ * Function declarations
+ */
+
+CREATE OR REPLACE FUNCTION send_message (recipient_orgunitid bigint, message_messagetype varchar(255), message_messagesubject varchar(255), message_messagetext text) RETURNS VOID
+    LANGUAGE plpgsql
+AS
+$$
+DECLARE
+    TABLE_RECORD RECORD;
+BEGIN
+
+DROP TABLE IF EXISTS temptransfermessage;
+CREATE TEMP TABLE temptransfermessage (
+    messageconversationid bigint,
+    time timestamp without time zone,
+    messageid bigint,
+    usermessageid int,
+    userid bigint
+);
+
+INSERT INTO temptransfermessage SELECT 
+    nextval('messageconversation_sequence'),
+    now(),
+    nextval('message_sequence'),
+    nextval('usermessage_sequence'),
+    (SELECT ui.userinfoid FROM userinfo ui
+      JOIN users u ON ui.userinfoid = u.userid
+      JOIN usergroupmembers ugm ON ugm.userid = ui.userinfoid
+      JOIN usergroup ug ON ug.usergroupid = ugm.usergroupid AND ugm.userid = ui.userinfoid
+      JOIN usermembership um ON um.userinfoid = ui.userinfoid
+      JOIN organisationunit ou ON ou.organisationunitid = um.organisationunitid
+      WHERE ug.uid = 'oUPZErnWFDE'
+      AND ou.organisationunitid = recipient_orgunitid
+      LIMIT 1)
+;
+
+INSERT INTO messageconversation SELECT --(messageconversationid, uid, messagecount, created, lastupdated, subject, messagetype, priority, status, user_assigned, lastsenderid, lastmessage, userid)
+    s1.messageconversationid as messageconversationid,
+    generate_uid() as uid,
+    1 as messagecount,
+    s1.time as created,
+    s1.time as lastupdated,
+    message_messagesubject as subject,
+    message_messagetype as messagetype,
+    'NONE' as priority,
+    'NONE' as status,
+    NULL as user_assigned,
+    NULL as lastsenderid,
+    s1.time as lastmessage,
+    s1.userid as userid
+    FROM temptransfermessage s1
+    ;
+
+INSERT INTO message SELECT
+    s1.messageid as messageid,
+    generate_uid() as uid,
+    now() as created,
+    now() as lastupdated,
+    message_messagetext as messagetext,
+    FALSE as internal,
+    NULL as metadata,
+    s1.userid as userid
+    FROM temptransfermessage s1
+    ;
+
+INSERT INTO messageconversation_messages SELECT
+    s1.messageconversationid as messageconversationid,
+    1 as sort_order,
+    s1.messageid as messageid
+    FROM temptransfermessage s1
+    ;
+
+-- Repeat for all recipients
+INSERT INTO usermessage SELECT
+    s1.usermessageid as usermessageid,
+    gen_random_uuid() as usermessagekey,
+    s1.userid as userid,
+    false as isread,
+    false as isfollowup
+    FROM temptransfermessage s1
+    ;
+
+INSERT INTO messageconversation_usermessages SELECT
+    s1.messageconversationid as messageconversationid,
+    s1.usermessageid as usermessageid
+    FROM temptransfermessage s1
+    ;
+
+END
+$$;
+
 
 
 /*
@@ -74,13 +167,16 @@ WITH transfer as(
 
 insert_treatment AS (
   insert into programstageinstance (programstageinstanceid,uid,programinstanceid,programstageid,executiondate,organisationunitid,status,created,lastupdated,attributeoptioncomboid,deleted,storedby,createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo )
-    (select                           treatmentpsiid,uid(),destinationpi,  treatmentpsid,      executiondate,organisationunitid,'COMPLETED',now(),  now(), attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
+    (select                           treatmentpsiid,generate_uid(),destinationpi,  treatmentpsid,      executiondate,organisationunitid,'COMPLETED',now(),  now(), attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
+    from transfer where destinationpi is not null)
+),
+insert_lab AS (
+  insert into programstageinstance (programstageinstanceid,uid,programinstanceid,programstageid,executiondate,organisationunitid,status,created,lastupdated,attributeoptioncomboid,deleted,storedby,createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo )
+    (select                           labpsiid             ,generate_uid(),destinationpi,  labpsid,      executiondate,organisationunitid,'COMPLETED',now(),  now(), attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
     from transfer where destinationpi is not null)
 )
-
-  insert into programstageinstance (programstageinstanceid,uid,programinstanceid,programstageid,executiondate,organisationunitid,status,created,lastupdated,attributeoptioncomboid,deleted,storedby,createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo )
-    (select                           labpsiid             ,uid(),destinationpi,  labpsid,      executiondate,organisationunitid,'COMPLETED',now(),  now(), attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
-    from transfer where destinationpi is not null);
+SELECT send_message(organisationunitid, 'PRIVATE', 'Patient transfer', 'Patient has been transferred')
+  from transfer where destinationpi is not null;
 
 
 
