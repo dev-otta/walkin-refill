@@ -53,7 +53,7 @@ FOR recipient IN SELECT ui.userinfoid FROM userinfo ui
   JOIN usergroup ug ON ug.usergroupid = ugm.usergroupid AND ugm.userid = ui.userinfoid
   JOIN usermembership um ON um.userinfoid = ui.userinfoid
   JOIN organisationunit ou ON ou.organisationunitid = um.organisationunitid
-  WHERE ug.uid = 'YD4IP7rYDnc' -- UID of userGroup whose members will recieve messages
+  WHERE ug.uid = 'phS5ScyDEYj' -- UID of userGroup whose members will recieve messages
   AND ou.organisationunitid = recipient_orgunitid
 
   LOOP    
