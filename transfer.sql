@@ -31,7 +31,11 @@ CREATE OR REPLACE FUNCTION send_message (recipient_orgunitid bigint, message_mes
 AS
 $$
 DECLARE
-    TABLE_RECORD RECORD;
+    --TABLE_RECORD RECORD;
+  recipient bigint;
+  --mc_sequence bigint := nextval('messageconversation_sequence');
+  --m_sequence bigint := nextval('message_sequence');
+  --um_sequence int := nextval('usermessage_sequence');
 BEGIN
 
 DROP TABLE IF EXISTS temptransfermessage;
@@ -43,21 +47,23 @@ CREATE TEMP TABLE temptransfermessage (
     userid bigint
 );
 
-INSERT INTO temptransfermessage SELECT 
-    nextval('messageconversation_sequence'),
-    now(),
-    nextval('message_sequence'),
-    nextval('usermessage_sequence'),
-    (SELECT ui.userinfoid FROM userinfo ui
-      JOIN users u ON ui.userinfoid = u.userid
-      JOIN usergroupmembers ugm ON ugm.userid = ui.userinfoid
-      JOIN usergroup ug ON ug.usergroupid = ugm.usergroupid AND ugm.userid = ui.userinfoid
-      JOIN usermembership um ON um.userinfoid = ui.userinfoid
-      JOIN organisationunit ou ON ou.organisationunitid = um.organisationunitid
-      WHERE ug.uid = 'oUPZErnWFDE'
-      AND ou.organisationunitid = recipient_orgunitid
-      LIMIT 1)
-;
+FOR recipient IN SELECT ui.userinfoid FROM userinfo ui
+  JOIN users u ON ui.userinfoid = u.userid
+  JOIN usergroupmembers ugm ON ugm.userid = ui.userinfoid
+  JOIN usergroup ug ON ug.usergroupid = ugm.usergroupid AND ugm.userid = ui.userinfoid
+  JOIN usermembership um ON um.userinfoid = ui.userinfoid
+  JOIN organisationunit ou ON ou.organisationunitid = um.organisationunitid
+  WHERE ug.uid = 'YD4IP7rYDnc' -- UID of userGroup whose members will recieve messages
+  AND ou.organisationunitid = recipient_orgunitid
+
+  LOOP    
+    INSERT INTO temptransfermessage SELECT 
+      nextval('messageconversation_sequence'),
+      now(),
+      nextval('message_sequence'),
+      nextval('usermessage_sequence'),
+      recipient;
+  END LOOP; 
 
 INSERT INTO messageconversation SELECT --(messageconversationid, uid, messagecount, created, lastupdated, subject, messagetype, priority, status, user_assigned, lastsenderid, lastmessage, userid)
     s1.messageconversationid as messageconversationid,
@@ -171,8 +177,8 @@ insert_treatment AS (
     from transfer where destinationpi is not null)
 ),
 insert_lab AS (
-  insert into programstageinstance (programstageinstanceid,uid,programinstanceid,programstageid,executiondate,organisationunitid,status,created,lastupdated,attributeoptioncomboid,deleted,storedby,createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo )
-    (select                           labpsiid             ,generate_uid(),destinationpi,  labpsid,      executiondate,organisationunitid,'COMPLETED',now(),  now(), attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
+  insert into programstageinstance (programstageinstanceid,uid           ,programinstanceid,programstageid,executiondate,organisationunitid,status     ,created,lastupdated,attributeoptioncomboid,deleted,storedby,createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo )
+    (select                         labpsiid              ,generate_uid(),destinationpi    ,labpsid       ,executiondate,organisationunitid,'COMPLETED',now()  ,now()      ,attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
     from transfer where destinationpi is not null)
 )
 SELECT send_message(organisationunitid, 'PRIVATE', 'Patient transfer', 'Patient has been transferred')
