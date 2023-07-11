@@ -136,7 +136,9 @@ WITH transfer as(
     nextval('programstageinstance_sequence') as labpsiid,
     (select programstageid from programstage where uid = 'tJ5SV8gfZaA') as treatmentpsid,
     (select programstageid from programstage where uid = 'edyRc6d5Bts') as labpsid,
-    pi.programinstanceid as destinationpi
+    pi.programinstanceid as destinationpi,
+    psi.eventdatavalues#>>'{"bvuRnNr6INS","value"}' as fullname,
+    psi.eventdatavalues#>>'{"XupJDPkqWoL","value"}' as tbnumber
     
     FROM programstageinstance psi
     -- JOIN trackedentityattribute tea on tea.uid = 'fPlDBVvpEJR' -- District TB No, not in use
@@ -181,7 +183,7 @@ insert_lab AS (
     (select                         labpsiid              ,generate_uid(),destinationpi    ,labpsid       ,executiondate,organisationunitid,'COMPLETED',now()  ,now()      ,attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
     from transfer where destinationpi is not null)
 )
-SELECT send_message(organisationunitid, 'PRIVATE', 'Patient transfer', 'Patient has been transferred')
+SELECT send_message(organisationunitid, 'PRIVATE', 'Patient transfer', CONCAT('Patient has been transferred: ',tbnumber, ' ', fullname))
   from transfer where destinationpi is not null;
 
 
