@@ -182,7 +182,7 @@ insert_lab AS (
   insert into programstageinstance (programstageinstanceid,uid           ,programinstanceid,programstageid,executiondate,organisationunitid,status     ,created,lastupdated,attributeoptioncomboid,deleted,storedby,createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo )
     (select                         labpsiid              ,generate_uid(),destinationpi    ,labpsid       ,executiondate,organisationunitid,'COMPLETED',now()  ,now()      ,attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
     from transfer where destinationpi is not null)
-), 
+)
 SELECT send_message(organisationunitid, 'PRIVATE', 'Patient transfer', CONCAT('Patient has been transferred: ',tbnumber, ' ', fullname))
   from transfer where destinationpi is not null;
 
