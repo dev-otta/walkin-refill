@@ -182,7 +182,7 @@ insert_lab AS (
   insert into programstageinstance (programstageinstanceid,uid           ,programinstanceid,programstageid,executiondate,organisationunitid,status     ,created,lastupdated,attributeoptioncomboid,deleted,storedby,createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo )
     (select                         labpsiid              ,generate_uid(),destinationpi    ,labpsid       ,executiondate,organisationunitid,'COMPLETED',now()  ,now()      ,attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
     from transfer where destinationpi is not null)
-)
+), 
 SELECT send_message(organisationunitid, 'PRIVATE', 'Patient transfer', CONCAT('Patient has been transferred: ',tbnumber, ' ', fullname))
   from transfer where destinationpi is not null;
 
@@ -277,13 +277,17 @@ WITH transfer AS (
     (select programstageid from programstage where uid = 'edyRc6d5Bts') as destpsid, 
     psifrom.*, 
     pi.programinstanceid as destinationpi
-)
+),
+update_lab as (
 UPDATE programstageinstance psitracker
     SET eventdatavalues = psitracker.eventdatavalues || transfer.eventdatavalues
   FROM transfer
   WHERE destinationpi IS NOT NULL
     AND psitracker.programstageid = transfer.destpsid
     AND psitracker.programinstanceid = destinationpi
+)
+SELECT send_message(organisationunitid, 'PRIVATE', 'Lab results transfer', CONCAT('Lab results transferred: ',eventdatavalues#>>'{"XupJDPkqWoL","value"}', ' ', eventdatavalues#>>'{"bvuRnNr6INS","value"}'))
+  from transfer where destinationpi is not null;
 ;
 
 
@@ -362,7 +366,9 @@ COMMIT;
  */
 UPDATE programstageinstance psiupdate
   SET eventdatavalues = jsonb_set(psi.eventdatavalues, '{iup9aING8xC,value}', '"Check Name"')
-  FROM programstageinstance psi
+  FROM 
+  send_message(12111, 'PRIVATE', 'Patient transfer', CONCAT('Patient has been transferred: ','tbnumber', ' ', 'fullname')),
+  programstageinstance psi
   -- JOIN trackedentityattribute tea on tea.uid = 'fPlDBVvpEJR' -- District TB No
   JOIN trackedentityattribute tea2 on tea2.uid = 'ZkNZOxS24k7' -- Unit TB No
   JOIN trackedentityattribute tea3 on tea3.uid = 'jWjSY7cktaQ' -- Full Name
