@@ -137,6 +137,7 @@ WITH transfer as(
     (select programstageid from programstage where uid = 'tJ5SV8gfZaA') as treatmentpsid,
     (select programstageid from programstage where uid = 'edyRc6d5Bts') as labpsid,
     pi.programinstanceid as destinationpi,
+    pi.organisationunitid as sourceorgunit,
     psi.eventdatavalues#>>'{"bvuRnNr6INS","value"}' as fullname,
     psi.eventdatavalues#>>'{"XupJDPkqWoL","value"}' as tbnumber
     
@@ -182,8 +183,12 @@ insert_lab AS (
   insert into programstageinstance (programstageinstanceid,uid           ,programinstanceid,programstageid,executiondate,organisationunitid,status     ,created,lastupdated,attributeoptioncomboid,deleted,storedby,createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo )
     (select                         labpsiid              ,generate_uid(),destinationpi    ,labpsid       ,executiondate,organisationunitid,'COMPLETED',now()  ,now()      ,attributeoptioncomboid,FALSE  ,'SCRIPT',createdatclient,lastupdatedatclient,geometry,lastsynchronized,eventdatavalues,assigneduserid,createdbyuserinfo,lastupdatedbyuserinfo
     from transfer where destinationpi is not null)
-)
+),
+message_targetou AS (
 SELECT send_message(organisationunitid, 'PRIVATE', 'Patient transfer', CONCAT('Patient has been transferred: ',tbnumber, ' ', fullname))
+  from transfer where destinationpi is not null
+)
+SELECT send_message(sourceorgunit, 'PRIVATE', 'Patient transfer', CONCAT('Patient has been transferred: ',tbnumber, ' ', fullname))
   from transfer where destinationpi is not null;
 
 
